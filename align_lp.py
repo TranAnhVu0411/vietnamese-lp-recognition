@@ -1,17 +1,10 @@
 import cv2
 import numpy as np
 import math
-from ultralytics import YOLO
 from pathlib import Path
 import os
 import argparse
-
-parser = argparse.ArgumentParser(description='Align License Plate')
-parser.add_argument('-img_path', '--img_path', type=str, help='lp img path for alignment', required=True)
-parser.add_argument('-mode', '--mode', type=str, help='align mode', choices=['houge', 'keypoint'], default='keypoint')
-parser.add_argument('-model_path', '--model_path', type=str, help='model path for lp alignment', default='model/best_corner_detect.pt')
-parser.add_argument('-save_path', '--save_path', type=str, help='saved path for lp aligment', required=True)
-args = parser.parse_args()
+from util import load_model
 
 # Phương pháp dùng houghLine
 def changeContrast(img):
@@ -126,44 +119,48 @@ def four_point_transform(image, pts):
 	# return the warped image
 	return warped
 
-# Model detect corner
-def load_model(path):
-    return YOLO(path)
-
 def corner_detect(model, img_path):
-    results = model(img_path)[0]
+    results = model(img_path, verbose=False)[0]
 
     keypoints = []
     for result in results:
         for keypoint in result.keypoints.data.tolist()[0]:
-                keypoints.append((int(keypoint[0]), int(keypoint[1])))
+            keypoints.append((int(keypoint[0]), int(keypoint[1])))
 
     return keypoints
 
-def align_lp(mode, img_path=None, model=None, save_path=None):
-    if save_path == None:
-        return 'Please set save path'
-    if img_path == None:
-        return 'Please set image path'
-    img = cv2.imread(img_path)
-    if mode not in ['houge', 'keypoint']:
+def align_lp(mode, img, model, save_path='', save=True):
+    name=''
+    if save:
+        if save_path == '':
+            return 'Please set save path'
+        else:
+            name = Path(img_path).stem
+    
+    if mode not in ['hough', 'keypoint']:
         return 'Align mode not found, please select 2 options (houge or keypoint)'
-    elif mode == 'houge':
+    elif mode == 'hough':
         img = deskew(img, 0, 0)
     elif mode == 'keypoint':
-        if model == None:
-            return 'Please set model'
-        else:
-            keypoints = corner_detect(model, img_path)
-            img = four_point_transform(img, np.array(keypoints, dtype = "float32"))
-    name = Path(img_path).stem
-    cv2.imwrite(os.path.join(save_path, '{}_align_{}.jpg').format(name, mode), img)
+        keypoints = corner_detect(model, img)
+        img = four_point_transform(img, np.array(keypoints, dtype = "float32"))
+    if save==True:
+        cv2.imwrite(os.path.join(save_path, '{}_align_{}.jpg').format(name, mode), img)
+    return img
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Align License Plate')
+    parser.add_argument('-img_path', '--img_path', type=str, help='lp img path for alignment', required=True)
+    parser.add_argument('-mode', '--mode', type=str, help='align mode', choices=['hough', 'keypoint'], default='keypoint')
+    parser.add_argument('-model_path', '--model_path', type=str, help='model path for lp alignment', default='model/best_corner_detect.pt')
+    parser.add_argument('-save_path', '--save_path', type=str, help='saved path for lp aligment', required=True)
+    args = parser.parse_args()
+
     img_path = args.img_path
+    img = cv2.imread(img_path)
     mode = args.mode
     model = None
     save_path = args.save_path
     if mode == 'keypoint':
         model = load_model(args.model_path)
-    align_lp(mode, img_path, model, save_path)
+    align_lp(mode, img, model, save_path)
