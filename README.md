@@ -5,8 +5,8 @@ Code báo cáo cuối khoá môn ML VinBigData của nhóm 12 với để tài n
 ## Installation
 
 ```bash
-  git clone https://github.com/Marsmallotr/License-Plate-Recognition.git
-  cd License-Plate-Recognition
+  git clone https://github.com/TranAnhVu0411/vietnamese-lp-recognition.git
+  cd vietnamese-lp-recognition
 
   # install dependencies using pip 
   pip install -r ./requirement.txt
